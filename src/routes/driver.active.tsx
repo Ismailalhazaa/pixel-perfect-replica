@@ -89,7 +89,7 @@ function ActiveDelivery() {
               size="lg"
               variant={s.done ? "mint" : i === 3 ? "default" : "outline"}
               className={cn("h-14 w-full justify-start text-base", s.done && "pointer-events-none")}
-              disabled={!s.enabled || status.isPending}
+              disabled={(!s.enabled && !s.done) || status.isPending}
               onClick={s.action}
               aria-pressed={s.done}
             >
