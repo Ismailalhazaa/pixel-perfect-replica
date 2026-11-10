@@ -63,7 +63,7 @@ export default function MapView({
         </Marker>
       ))}
       {line && markers.length >= 2 && (
-        <Polyline positions={markers.map((m) => [m.lat, m.lng] as [number, number])} pathOptions={{ color: "#2BB59A", weight: 4, dashArray: "6 10" }} />
+        <Polyline positions={markers.map((m) => [m.lat, m.lng] as [number, number])} pathOptions={{ className: "wm-route", weight: 4, dashArray: "6 10" }} />
       )}
       <FitBounds markers={markers} fit={fit} />
       {onPick && <ClickToMove onPick={onPick} />}

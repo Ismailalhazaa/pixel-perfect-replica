@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { LogOut } from "lucide-react";
@@ -7,7 +7,7 @@ import { useSession } from "@/stores/session";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export interface PanelNavItem { to: string; label: string; icon: LucideIcon; exact?: boolean }
+export interface PanelNavItem { to: NonNullable<LinkProps["to"]>; label: string; icon: LucideIcon; exact?: boolean }
 
 /** Desktop-first shell (sidebar) used by restaurant and admin panels. */
 export function PanelShell({ title, nav, children }: { title: string; nav: PanelNavItem[]; children: ReactNode }) {
