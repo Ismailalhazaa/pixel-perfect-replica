@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Check, MapPin, Navigation, Store, X } from "lucide-react";
 import type { Order } from "@/types";
@@ -91,12 +91,14 @@ function DriverHome() {
 
 function OfferCard({ order, restaurant, onAccept, onReject, busy }: { order: Order; restaurant?: { name: string; lat: number; lng: number }; onAccept: () => void; onReject: () => void; busy: boolean }) {
   const [left, setLeft] = useState(OFFER_SECONDS);
+  const rejectRef = useRef(onReject);
+  rejectRef.current = onReject;
   useEffect(() => { playChime(); }, []);
   useEffect(() => {
-    if (left <= 0) { onReject(); return; }
+    if (left <= 0) { rejectRef.current(); return; }
     const t = setTimeout(() => setLeft((l) => l - 1), 1000);
     return () => clearTimeout(t);
-  }, [left, onReject]);
+  }, [left]);
   const km = restaurant ? distanceKm(restaurant, order.deliveryAddress) : 0;
   return (
     <article className="surface space-y-4 border-2 border-brand p-5" aria-live="assertive">

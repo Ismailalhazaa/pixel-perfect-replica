@@ -12,10 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as DriverRouteImport } from './routes/driver'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RestaurantPanelRouteImport } from './routes/restaurant-panel'
+import { Route as DriverIndexRouteImport } from './routes/driver.index'
+import { Route as DriverActiveRouteImport } from './routes/driver.active'
+import { Route as DriverEarningsRouteImport } from './routes/driver.earnings'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as RestaurantPanelIndexRouteImport } from './routes/restaurant-panel.index'
@@ -38,6 +42,11 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DriverRoute = DriverRouteImport.update({
+  id: '/driver',
+  path: '/driver',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -57,6 +66,21 @@ const RestaurantPanelRoute = RestaurantPanelRouteImport.update({
   id: '/restaurant-panel',
   path: '/restaurant-panel',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DriverIndexRoute = DriverIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DriverRoute,
+} as any)
+const DriverActiveRoute = DriverActiveRouteImport.update({
+  id: '/active',
+  path: '/active',
+  getParentRoute: () => DriverRoute,
+} as any)
+const DriverEarningsRoute = DriverEarningsRouteImport.update({
+  id: '/earnings',
+  path: '/earnings',
+  getParentRoute: () => DriverRoute,
 } as any)
 const OrdersIndexRoute = OrdersIndexRouteImport.update({
   id: '/orders/',
@@ -93,14 +117,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/driver': typeof DriverRouteWithChildren
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/restaurant-panel': typeof RestaurantPanelRouteWithChildren
+  '/driver/active': typeof DriverActiveRoute
+  '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
   '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
+  '/driver/': typeof DriverIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/restaurant-panel/': typeof RestaurantPanelIndexRoute
 }
@@ -111,10 +139,13 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/driver/active': typeof DriverActiveRoute
+  '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
   '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
+  '/driver': typeof DriverIndexRoute
   '/orders': typeof OrdersIndexRoute
   '/restaurant-panel': typeof RestaurantPanelIndexRoute
 }
@@ -123,14 +154,18 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/driver': typeof DriverRouteWithChildren
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/restaurant-panel': typeof RestaurantPanelRouteWithChildren
+  '/driver/active': typeof DriverActiveRoute
+  '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
   '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
+  '/driver/': typeof DriverIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/restaurant-panel/': typeof RestaurantPanelIndexRoute
 }
@@ -140,14 +175,18 @@ export interface FileRouteTypes {
     | '/'
     | '/cart'
     | '/checkout'
+    | '/driver'
     | '/login'
     | '/profile'
     | '/register'
     | '/restaurant-panel'
+    | '/driver/active'
+    | '/driver/earnings'
     | '/orders/$id'
     | '/restaurant-panel/menu'
     | '/restaurant-panel/reports'
     | '/restaurant/$id'
+    | '/driver/'
     | '/orders/'
     | '/restaurant-panel/'
   fileRoutesByTo: FileRoutesByTo
@@ -158,10 +197,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/register'
+    | '/driver/active'
+    | '/driver/earnings'
     | '/orders/$id'
     | '/restaurant-panel/menu'
     | '/restaurant-panel/reports'
     | '/restaurant/$id'
+    | '/driver'
     | '/orders'
     | '/restaurant-panel'
   id:
@@ -169,14 +211,18 @@ export interface FileRouteTypes {
     | '/'
     | '/cart'
     | '/checkout'
+    | '/driver'
     | '/login'
     | '/profile'
     | '/register'
     | '/restaurant-panel'
+    | '/driver/active'
+    | '/driver/earnings'
     | '/orders/$id'
     | '/restaurant-panel/menu'
     | '/restaurant-panel/reports'
     | '/restaurant/$id'
+    | '/driver/'
     | '/orders/'
     | '/restaurant-panel/'
   fileRoutesById: FileRoutesById
@@ -185,6 +231,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
+  DriverRoute: typeof DriverRouteWithChildren
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
@@ -217,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/driver': {
+      id: '/driver'
+      path: '/driver'
+      fullPath: '/driver'
+      preLoaderRoute: typeof DriverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -244,6 +298,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/restaurant-panel'
       preLoaderRoute: typeof RestaurantPanelRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/driver/': {
+      id: '/driver/'
+      path: '/'
+      fullPath: '/driver/'
+      preLoaderRoute: typeof DriverIndexRouteImport
+      parentRoute: typeof DriverRoute
+    }
+    '/driver/active': {
+      id: '/driver/active'
+      path: '/active'
+      fullPath: '/driver/active'
+      preLoaderRoute: typeof DriverActiveRouteImport
+      parentRoute: typeof DriverRoute
+    }
+    '/driver/earnings': {
+      id: '/driver/earnings'
+      path: '/earnings'
+      fullPath: '/driver/earnings'
+      preLoaderRoute: typeof DriverEarningsRouteImport
+      parentRoute: typeof DriverRoute
     }
     '/orders/': {
       id: '/orders/'
@@ -290,6 +365,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DriverRouteChildren {
+  DriverActiveRoute: typeof DriverActiveRoute
+  DriverEarningsRoute: typeof DriverEarningsRoute
+  DriverIndexRoute: typeof DriverIndexRoute
+}
+
+const DriverRouteChildren: DriverRouteChildren = {
+  DriverActiveRoute: DriverActiveRoute,
+  DriverEarningsRoute: DriverEarningsRoute,
+  DriverIndexRoute: DriverIndexRoute,
+}
+
+const DriverRouteWithChildren =
+  DriverRoute._addFileChildren(DriverRouteChildren)
+
 interface RestaurantPanelRouteChildren {
   RestaurantPanelMenuRoute: typeof RestaurantPanelMenuRoute
   RestaurantPanelReportsRoute: typeof RestaurantPanelReportsRoute
@@ -310,6 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
+  DriverRoute: DriverRouteWithChildren,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
