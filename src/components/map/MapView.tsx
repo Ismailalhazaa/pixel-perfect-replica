@@ -21,6 +21,16 @@ function FitBounds({ markers, fit }: { markers: MapMarker[]; fit: boolean }) {
   return null;
 }
 
+/** Keep one marker (e.g. the moving driver) centred as it travels. */
+function Follow({ markers, kind }: { markers: MapMarker[]; kind?: MapMarker["kind"] }) {
+  const map = useMap();
+  const m = kind ? markers.find((x) => x.kind === kind) : undefined;
+  useEffect(() => {
+    if (m) map.panTo([m.lat, m.lng], { animate: true, duration: 1 });
+  }, [m?.lat, m?.lng, map]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
 function ClickToMove({ onPick }: { onPick?: (lat: number, lng: number) => void }) {
   useMapEvents({ click: (e) => onPick?.(e.latlng.lat, e.latlng.lng) });
   return null;
@@ -34,6 +44,7 @@ export default function MapView({
   draggableKind,
   onPick,
   fit = true,
+  followKind,
 }: {
   markers: MapMarker[];
   center?: { lat: number; lng: number };
@@ -42,6 +53,7 @@ export default function MapView({
   draggableKind?: MapMarker["kind"];
   onPick?: (lat: number, lng: number) => void;
   fit?: boolean;
+  followKind?: MapMarker["kind"];
 }) {
   const c = center ?? markers[0] ?? { lat: 33.5138, lng: 36.2765 };
   return (
@@ -65,7 +77,8 @@ export default function MapView({
       {line && markers.length >= 2 && (
         <Polyline positions={markers.map((m) => [m.lat, m.lng] as [number, number])} pathOptions={{ className: "wm-route", weight: 4, dashArray: "6 10" }} />
       )}
-      <FitBounds markers={markers} fit={fit} />
+      <FitBounds markers={markers} fit={fit && !followKind} />
+      <Follow markers={markers} kind={followKind} />
       {onPick && <ClickToMove onPick={onPick} />}
     </MapContainer>
   );

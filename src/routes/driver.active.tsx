@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Banknote, Check, MapPin, Phone, Store } from "lucide-react";
+import { Banknote, Check, MapPin, Navigation, Phone, Store } from "lucide-react";
 import * as api from "@/services/api";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/common/states";
 import { StatusChip } from "@/components/common/StatusChip";
@@ -39,6 +39,7 @@ function ActiveDelivery() {
   const [arrivedCust, setArrivedCust] = useState<string | null>(null);
   const [cashOpen, setCashOpen] = useState(false);
   const [cash, setCash] = useState("");
+  const [follow, setFollow] = useState(true);
 
   const status = useMutation({
     mutationFn: (v: { status: "ON_THE_WAY" | "DELIVERED"; cashCollected?: number }) => api.updateOrderStatus(o!.id, { ...v, userId: user.id, role: "DRIVER" }),
@@ -74,7 +75,14 @@ function ActiveDelivery() {
         <h1 className="text-xl">توصيل {o.code}</h1>
         <StatusChip status={o.status} />
       </div>
-      <LazyMap className="h-72" markers={markers} line />
+      <div className="relative">
+        <LazyMap className="h-72" markers={markers} line followKind={onWay && follow ? "driver" : undefined} zoom={onWay && follow ? 16 : 14} />
+        {onWay && (
+          <Button size="sm" variant={follow ? "mint" : "outline"} className="absolute bottom-3 left-3 z-[500]" onClick={() => setFollow((f) => !f)} aria-pressed={follow}>
+            <Navigation /> {follow ? "تتبع المسار مفعّل" : "تتبع المسار"}
+          </Button>
+        )}
+      </div>
       <div className="surface space-y-3 p-4">
         <div className="flex gap-3"><Store className="mt-0.5 h-5 w-5 text-brand" /><div><p className="text-xs text-muted-foreground">المطعم</p><p className="font-bold">{rest.data?.name ?? "…"}</p></div></div>
         <div className="flex gap-3"><MapPin className="mt-0.5 h-5 w-5 text-brand-ink" /><div className="flex-1"><p className="text-xs text-muted-foreground">الزبون</p><p className="font-bold">{o.deliveryAddress.label}</p>{o.deliveryAddress.details && <p className="text-sm text-muted-foreground">{o.deliveryAddress.details}</p>}</div>
