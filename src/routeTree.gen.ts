@@ -19,6 +19,8 @@ import { Route as RestaurantPanelRouteImport } from './routes/restaurant-panel'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as RestaurantPanelIndexRouteImport } from './routes/restaurant-panel.index'
+import { Route as RestaurantPanelMenuRouteImport } from './routes/restaurant-panel.menu'
+import { Route as RestaurantPanelReportsRouteImport } from './routes/restaurant-panel.reports'
 import { Route as RestaurantIdRouteImport } from './routes/restaurant.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +73,16 @@ const RestaurantPanelIndexRoute = RestaurantPanelIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RestaurantPanelRoute,
 } as any)
+const RestaurantPanelMenuRoute = RestaurantPanelMenuRouteImport.update({
+  id: '/menu',
+  path: '/menu',
+  getParentRoute: () => RestaurantPanelRoute,
+} as any)
+const RestaurantPanelReportsRoute = RestaurantPanelReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => RestaurantPanelRoute,
+} as any)
 const RestaurantIdRoute = RestaurantIdRouteImport.update({
   id: '/restaurant/$id',
   path: '/restaurant/$id',
@@ -86,6 +98,8 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/restaurant-panel': typeof RestaurantPanelRouteWithChildren
   '/orders/$id': typeof OrdersIdRoute
+  '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
+  '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
   '/orders/': typeof OrdersIndexRoute
   '/restaurant-panel/': typeof RestaurantPanelIndexRoute
@@ -98,6 +112,8 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/orders/$id': typeof OrdersIdRoute
+  '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
+  '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
   '/orders': typeof OrdersIndexRoute
   '/restaurant-panel': typeof RestaurantPanelIndexRoute
@@ -112,6 +128,8 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/restaurant-panel': typeof RestaurantPanelRouteWithChildren
   '/orders/$id': typeof OrdersIdRoute
+  '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
+  '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
   '/orders/': typeof OrdersIndexRoute
   '/restaurant-panel/': typeof RestaurantPanelIndexRoute
@@ -127,6 +145,8 @@ export interface FileRouteTypes {
     | '/register'
     | '/restaurant-panel'
     | '/orders/$id'
+    | '/restaurant-panel/menu'
+    | '/restaurant-panel/reports'
     | '/restaurant/$id'
     | '/orders/'
     | '/restaurant-panel/'
@@ -139,6 +159,8 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/orders/$id'
+    | '/restaurant-panel/menu'
+    | '/restaurant-panel/reports'
     | '/restaurant/$id'
     | '/orders'
     | '/restaurant-panel'
@@ -152,6 +174,8 @@ export interface FileRouteTypes {
     | '/register'
     | '/restaurant-panel'
     | '/orders/$id'
+    | '/restaurant-panel/menu'
+    | '/restaurant-panel/reports'
     | '/restaurant/$id'
     | '/orders/'
     | '/restaurant-panel/'
@@ -242,6 +266,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RestaurantPanelIndexRouteImport
       parentRoute: typeof RestaurantPanelRoute
     }
+    '/restaurant-panel/menu': {
+      id: '/restaurant-panel/menu'
+      path: '/menu'
+      fullPath: '/restaurant-panel/menu'
+      preLoaderRoute: typeof RestaurantPanelMenuRouteImport
+      parentRoute: typeof RestaurantPanelRoute
+    }
+    '/restaurant-panel/reports': {
+      id: '/restaurant-panel/reports'
+      path: '/reports'
+      fullPath: '/restaurant-panel/reports'
+      preLoaderRoute: typeof RestaurantPanelReportsRouteImport
+      parentRoute: typeof RestaurantPanelRoute
+    }
     '/restaurant/$id': {
       id: '/restaurant/$id'
       path: '/restaurant/$id'
@@ -253,10 +291,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface RestaurantPanelRouteChildren {
+  RestaurantPanelMenuRoute: typeof RestaurantPanelMenuRoute
+  RestaurantPanelReportsRoute: typeof RestaurantPanelReportsRoute
   RestaurantPanelIndexRoute: typeof RestaurantPanelIndexRoute
 }
 
 const RestaurantPanelRouteChildren: RestaurantPanelRouteChildren = {
+  RestaurantPanelMenuRoute: RestaurantPanelMenuRoute,
+  RestaurantPanelReportsRoute: RestaurantPanelReportsRoute,
   RestaurantPanelIndexRoute: RestaurantPanelIndexRoute,
 }
 
