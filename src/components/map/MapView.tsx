@@ -45,6 +45,7 @@ export default function MapView({
   onPick,
   fit = true,
   followKind,
+  route,
 }: {
   markers: MapMarker[];
   center?: { lat: number; lng: number };
@@ -54,6 +55,8 @@ export default function MapView({
   onPick?: (lat: number, lng: number) => void;
   fit?: boolean;
   followKind?: MapMarker["kind"];
+  /** Street route to draw ([lat,lng][]); replaces the straight line when present. */
+  route?: [number, number][] | null;
 }) {
   const c = center ?? markers[0] ?? { lat: 33.5138, lng: 36.2765 };
   return (
@@ -74,7 +77,13 @@ export default function MapView({
           {m.label && <Tooltip direction="top" offset={[0, -16]}>{m.label}</Tooltip>}
         </Marker>
       ))}
-      {line && markers.length >= 2 && (
+      {route && route.length > 1 && (
+        <>
+          <Polyline positions={route} pathOptions={{ color: "#0F3D3E", weight: 9, opacity: 0.25 }} />
+          <Polyline positions={route} pathOptions={{ className: "wm-route", weight: 5 }} />
+        </>
+      )}
+      {!route && line && markers.length >= 2 && (
         <Polyline positions={markers.map((m) => [m.lat, m.lng] as [number, number])} pathOptions={{ className: "wm-route", weight: 4, dashArray: "6 10" }} />
       )}
       <FitBounds markers={markers} fit={fit && !followKind} />
