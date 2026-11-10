@@ -20,7 +20,10 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RestaurantPanelRouteImport } from './routes/restaurant-panel'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
+import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminRestaurantsRouteImport } from './routes/admin.restaurants'
+import { Route as AdminSettlementsRouteImport } from './routes/admin.settlements'
+import { Route as AdminZonesRouteImport } from './routes/admin.zones'
 import { Route as DriverIndexRouteImport } from './routes/driver.index'
 import { Route as DriverActiveRouteImport } from './routes/driver.active'
 import { Route as DriverEarningsRouteImport } from './routes/driver.earnings'
@@ -86,9 +89,24 @@ const AdminDriversRoute = AdminDriversRouteImport.update({
   path: '/drivers',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminRestaurantsRoute = AdminRestaurantsRouteImport.update({
   id: '/restaurants',
   path: '/restaurants',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettlementsRoute = AdminSettlementsRouteImport.update({
+  id: '/settlements',
+  path: '/settlements',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminZonesRoute = AdminZonesRouteImport.update({
+  id: '/zones',
+  path: '/zones',
   getParentRoute: () => AdminRoute,
 } as any)
 const DriverIndexRoute = DriverIndexRouteImport.update({
@@ -148,7 +166,10 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/restaurant-panel': typeof RestaurantPanelRouteWithChildren
   '/admin/drivers': typeof AdminDriversRoute
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/restaurants': typeof AdminRestaurantsRoute
+  '/admin/settlements': typeof AdminSettlementsRoute
+  '/admin/zones': typeof AdminZonesRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
@@ -168,7 +189,10 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/admin/drivers': typeof AdminDriversRoute
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/restaurants': typeof AdminRestaurantsRoute
+  '/admin/settlements': typeof AdminSettlementsRoute
+  '/admin/zones': typeof AdminZonesRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
@@ -192,7 +216,10 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/restaurant-panel': typeof RestaurantPanelRouteWithChildren
   '/admin/drivers': typeof AdminDriversRoute
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/restaurants': typeof AdminRestaurantsRoute
+  '/admin/settlements': typeof AdminSettlementsRoute
+  '/admin/zones': typeof AdminZonesRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
@@ -217,7 +244,10 @@ export interface FileRouteTypes {
     | '/register'
     | '/restaurant-panel'
     | '/admin/drivers'
+    | '/admin/orders'
     | '/admin/restaurants'
+    | '/admin/settlements'
+    | '/admin/zones'
     | '/driver/active'
     | '/driver/earnings'
     | '/orders/$id'
@@ -237,7 +267,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/admin/drivers'
+    | '/admin/orders'
     | '/admin/restaurants'
+    | '/admin/settlements'
+    | '/admin/zones'
     | '/driver/active'
     | '/driver/earnings'
     | '/orders/$id'
@@ -260,7 +293,10 @@ export interface FileRouteTypes {
     | '/register'
     | '/restaurant-panel'
     | '/admin/drivers'
+    | '/admin/orders'
     | '/admin/restaurants'
+    | '/admin/settlements'
+    | '/admin/zones'
     | '/driver/active'
     | '/driver/earnings'
     | '/orders/$id'
@@ -367,11 +403,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDriversRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/orders': {
+      id: '/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/restaurants': {
       id: '/admin/restaurants'
       path: '/restaurants'
       fullPath: '/admin/restaurants'
       preLoaderRoute: typeof AdminRestaurantsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settlements': {
+      id: '/admin/settlements'
+      path: '/settlements'
+      fullPath: '/admin/settlements'
+      preLoaderRoute: typeof AdminSettlementsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/zones': {
+      id: '/admin/zones'
+      path: '/zones'
+      fullPath: '/admin/zones'
+      preLoaderRoute: typeof AdminZonesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/driver/': {
@@ -442,13 +499,19 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminDriversRoute: typeof AdminDriversRoute
+  AdminOrdersRoute: typeof AdminOrdersRoute
   AdminRestaurantsRoute: typeof AdminRestaurantsRoute
+  AdminSettlementsRoute: typeof AdminSettlementsRoute
+  AdminZonesRoute: typeof AdminZonesRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminDriversRoute: AdminDriversRoute,
+  AdminOrdersRoute: AdminOrdersRoute,
   AdminRestaurantsRoute: AdminRestaurantsRoute,
+  AdminSettlementsRoute: AdminSettlementsRoute,
+  AdminZonesRoute: AdminZonesRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
