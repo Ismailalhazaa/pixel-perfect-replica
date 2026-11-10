@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as DriverRouteImport } from './routes/driver'
@@ -17,6 +18,9 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RestaurantPanelRouteImport } from './routes/restaurant-panel'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminDriversRouteImport } from './routes/admin.drivers'
+import { Route as AdminRestaurantsRouteImport } from './routes/admin.restaurants'
 import { Route as DriverIndexRouteImport } from './routes/driver.index'
 import { Route as DriverActiveRouteImport } from './routes/driver.active'
 import { Route as DriverEarningsRouteImport } from './routes/driver.earnings'
@@ -30,6 +34,11 @@ import { Route as RestaurantIdRouteImport } from './routes/restaurant.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CartRoute = CartRouteImport.update({
@@ -66,6 +75,21 @@ const RestaurantPanelRoute = RestaurantPanelRouteImport.update({
   id: '/restaurant-panel',
   path: '/restaurant-panel',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDriversRoute = AdminDriversRouteImport.update({
+  id: '/drivers',
+  path: '/drivers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRestaurantsRoute = AdminRestaurantsRouteImport.update({
+  id: '/restaurants',
+  path: '/restaurants',
+  getParentRoute: () => AdminRoute,
 } as any)
 const DriverIndexRoute = DriverIndexRouteImport.update({
   id: '/',
@@ -115,6 +139,7 @@ const RestaurantIdRoute = RestaurantIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/driver': typeof DriverRouteWithChildren
@@ -122,12 +147,15 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/restaurant-panel': typeof RestaurantPanelRouteWithChildren
+  '/admin/drivers': typeof AdminDriversRoute
+  '/admin/restaurants': typeof AdminRestaurantsRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
   '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/driver/': typeof DriverIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/restaurant-panel/': typeof RestaurantPanelIndexRoute
@@ -139,12 +167,15 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/admin/drivers': typeof AdminDriversRoute
+  '/admin/restaurants': typeof AdminRestaurantsRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
   '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
+  '/admin': typeof AdminIndexRoute
   '/driver': typeof DriverIndexRoute
   '/orders': typeof OrdersIndexRoute
   '/restaurant-panel': typeof RestaurantPanelIndexRoute
@@ -152,6 +183,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/driver': typeof DriverRouteWithChildren
@@ -159,12 +191,15 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/restaurant-panel': typeof RestaurantPanelRouteWithChildren
+  '/admin/drivers': typeof AdminDriversRoute
+  '/admin/restaurants': typeof AdminRestaurantsRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/earnings': typeof DriverEarningsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/restaurant-panel/menu': typeof RestaurantPanelMenuRoute
   '/restaurant-panel/reports': typeof RestaurantPanelReportsRoute
   '/restaurant/$id': typeof RestaurantIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/driver/': typeof DriverIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/restaurant-panel/': typeof RestaurantPanelIndexRoute
@@ -173,6 +208,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/cart'
     | '/checkout'
     | '/driver'
@@ -180,12 +216,15 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/restaurant-panel'
+    | '/admin/drivers'
+    | '/admin/restaurants'
     | '/driver/active'
     | '/driver/earnings'
     | '/orders/$id'
     | '/restaurant-panel/menu'
     | '/restaurant-panel/reports'
     | '/restaurant/$id'
+    | '/admin/'
     | '/driver/'
     | '/orders/'
     | '/restaurant-panel/'
@@ -197,18 +236,22 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/register'
+    | '/admin/drivers'
+    | '/admin/restaurants'
     | '/driver/active'
     | '/driver/earnings'
     | '/orders/$id'
     | '/restaurant-panel/menu'
     | '/restaurant-panel/reports'
     | '/restaurant/$id'
+    | '/admin'
     | '/driver'
     | '/orders'
     | '/restaurant-panel'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/cart'
     | '/checkout'
     | '/driver'
@@ -216,12 +259,15 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/restaurant-panel'
+    | '/admin/drivers'
+    | '/admin/restaurants'
     | '/driver/active'
     | '/driver/earnings'
     | '/orders/$id'
     | '/restaurant-panel/menu'
     | '/restaurant-panel/reports'
     | '/restaurant/$id'
+    | '/admin/'
     | '/driver/'
     | '/orders/'
     | '/restaurant-panel/'
@@ -229,6 +275,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
   DriverRoute: typeof DriverRouteWithChildren
@@ -248,6 +295,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cart': {
@@ -298,6 +352,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/restaurant-panel'
       preLoaderRoute: typeof RestaurantPanelRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/drivers': {
+      id: '/admin/drivers'
+      path: '/drivers'
+      fullPath: '/admin/drivers'
+      preLoaderRoute: typeof AdminDriversRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/restaurants': {
+      id: '/admin/restaurants'
+      path: '/restaurants'
+      fullPath: '/admin/restaurants'
+      preLoaderRoute: typeof AdminRestaurantsRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/driver/': {
       id: '/driver/'
@@ -365,6 +440,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminDriversRoute: typeof AdminDriversRoute
+  AdminRestaurantsRoute: typeof AdminRestaurantsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminDriversRoute: AdminDriversRoute,
+  AdminRestaurantsRoute: AdminRestaurantsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface DriverRouteChildren {
   DriverActiveRoute: typeof DriverActiveRoute
   DriverEarningsRoute: typeof DriverEarningsRoute
@@ -398,6 +487,7 @@ const RestaurantPanelRouteWithChildren = RestaurantPanelRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   DriverRoute: DriverRouteWithChildren,
