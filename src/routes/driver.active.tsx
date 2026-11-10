@@ -16,6 +16,7 @@ import { useSession } from "@/stores/session";
 import { useMyDriver } from "@/hooks/use-my-accounts";
 import { formatSYP } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useStreetRoute } from "@/lib/routing";
 
 export const Route = createFileRoute("/driver/active")({
   component: ActiveDelivery,
@@ -40,6 +41,9 @@ function ActiveDelivery() {
   const [cashOpen, setCashOpen] = useState(false);
   const [cash, setCash] = useState("");
   const [follow, setFollow] = useState(true);
+  const goingToCustomer = active.data?.[0]?.status === "ON_THE_WAY";
+  const target = goingToCustomer ? active.data?.[0]?.deliveryAddress : rest.data;
+  const streetRoute = useStreetRoute(loc.data, target);
 
   const status = useMutation({
     mutationFn: (v: { status: "ON_THE_WAY" | "DELIVERED"; cashCollected?: number }) => api.updateOrderStatus(o!.id, { ...v, userId: user.id, role: "DRIVER" }),
@@ -76,7 +80,7 @@ function ActiveDelivery() {
         <StatusChip status={o.status} />
       </div>
       <div className="relative">
-        <LazyMap className="h-72" markers={markers} line followKind={onWay && follow ? "driver" : undefined} zoom={onWay && follow ? 16 : 14} />
+        <LazyMap className="h-72" markers={markers} line route={streetRoute.data} followKind={onWay && follow ? "driver" : undefined} zoom={onWay && follow ? 16 : 14} />
         {onWay && (
           <Button size="sm" variant={follow ? "mint" : "outline"} className="absolute bottom-3 left-3 z-[500]" onClick={() => setFollow((f) => !f)} aria-pressed={follow}>
             <Navigation /> {follow ? "تتبع المسار مفعّل" : "تتبع المسار"}

@@ -8,6 +8,7 @@ import { CustomerShell } from "@/components/layout/CustomerShell";
 import { RequireRole } from "@/components/layout/RequireRole";
 import { ErrorState, ListSkeleton } from "@/components/common/states";
 import { StatusChip } from "@/components/common/StatusChip";
+import { useStreetRoute } from "@/lib/routing";
 import { LazyMap } from "@/components/map/LazyMap";
 import type { MapMarker } from "@/components/map/types";
 import { RatingDialog } from "@/components/customer/RatingDialog";
@@ -44,6 +45,7 @@ function Tracking() {
   const rest = useQuery({ queryKey: ["restaurant", o?.restaurantId], queryFn: () => api.getRestaurant(o!.restaurantId), enabled: !!o });
   const driver = useQuery({ queryKey: ["driver", o?.driverId], queryFn: () => api.getDriver(o!.driverId!), enabled: !!o?.driverId });
   const loc = useQuery({ queryKey: ["driverLocation", o?.driverId], queryFn: () => api.getDriverLocation(o!.driverId!), enabled: !!o?.driverId && o.status === "ON_THE_WAY" });
+  const streetRoute = useStreetRoute(o?.status === "ON_THE_WAY" ? loc.data : null, o?.deliveryAddress);
   const reviews = useQuery({ queryKey: ["reviews", [id]], queryFn: () => api.getReviews([id]), enabled: o?.status === "DELIVERED" });
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
@@ -82,7 +84,7 @@ function Tracking() {
 
       <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_380px]">
         <div className="space-y-4">
-          <LazyMap className="h-72 md:h-96" markers={markers} line={o.status === "ON_THE_WAY"} />
+          <LazyMap className="h-72 md:h-96" markers={markers} line={o.status === "ON_THE_WAY"} route={o.status === "ON_THE_WAY" ? streetRoute.data : null} />
           {o.status !== "DELIVERED" && !ended && (
             <div className="surface flex items-center gap-3 p-4">
               <div className="grid h-12 w-12 place-items-center rounded-xl bg-brand-soft text-brand"><Clock /></div>
