@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { useSession } from "@/stores/session";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 export interface PanelNavItem { to: NonNullable<LinkProps["to"]>; label: string; icon: LucideIcon; exact?: boolean }
@@ -18,7 +19,10 @@ export function PanelShell({ title, nav, children }: { title: string; nav: Panel
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
       <aside className="hero-glow hidden flex-col gap-6 p-5 text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-screen">
-        <Logo variant="dark" className="h-10 self-start" />
+        <div className="flex items-center justify-between gap-2">
+          <Logo variant="dark" className="h-10" />
+          <ThemeToggle variant="ghost" className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground" />
+        </div>
         <p className="text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">{title}</p>
         <nav className="flex flex-col gap-1" aria-label={title}>
           {nav.map((n) => (
@@ -39,9 +43,12 @@ export function PanelShell({ title, nav, children }: { title: string; nav: Panel
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur lg:hidden">
         <div className="flex h-14 items-center justify-between px-4">
           <Logo className="h-8" />
+          <div className="flex items-center gap-1">
+          <ThemeToggle variant="ghost" />
           <Button variant="ghost" size="icon" aria-label="تسجيل الخروج" onClick={() => { logout(); navigate({ to: "/login", search: { role: undefined } }); }}>
             <LogOut />
           </Button>
+          </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label={title}>
           {nav.map((n) => (

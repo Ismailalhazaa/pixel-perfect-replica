@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { THEME_BOOT_SCRIPT, useTheme } from "@/stores/theme";
 import { useSession } from "@/stores/session";
 import { useCart } from "@/stores/cart";
 import { socket } from "@/services/realtime";
@@ -93,8 +94,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -109,6 +111,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function ClientBridge() {
   const qc = useQueryClient();
   useEffect(() => {
+    useTheme.getState().init();
     void useSession.persist.rehydrate();
     void useCart.persist.rehydrate();
     const onOrder = () => {
@@ -130,7 +133,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ClientBridge />
       <Outlet />
-      <Toaster position="top-center" dir="rtl" richColors />
+      <ThemedToaster />
     </QueryClientProvider>
   );
+}
+
+function ThemedToaster() {
+  const theme = useTheme((s) => s.theme);
+  return <Toaster position="top-center" dir="rtl" richColors theme={theme} />;
 }
