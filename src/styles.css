@@ -170,7 +170,6 @@
   --sidebar-ring: oklch(0.7 0.18 46);
   color-scheme: dark;
 }
-.dark .hero-glow, .dark.hero-glow { background-color: oklch(0.15 0.02 200); }
 .dark .leaflet-tile-pane { filter: brightness(0.8) contrast(1.1) saturate(0.8); }
 
 @layer base {
@@ -201,7 +200,7 @@
   background:
     radial-gradient(circle at 85% 20%, color-mix(in oklab, var(--brand) 35%, transparent), transparent 55%),
     radial-gradient(circle at 10% 90%, color-mix(in oklab, var(--mint) 30%, transparent), transparent 50%),
-    var(--brand-ink);
+    var(--sidebar);
 }
 
 /* Leaflet markers */
