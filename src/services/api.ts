@@ -2,11 +2,12 @@
  * Single data-access entry point. Components and hooks import ONLY from here.
  * VITE_USE_MOCK=true (default) uses the in-browser mock; otherwise calls the REST backend at VITE_API_URL.
  */
-import type { AccountType, Address, Driver, MenuCategory, MenuItem, Restaurant, Review, User, Zone } from "@/types";
+import type { AccountType, Address, Driver, DriverApplication, MenuCategory, MenuItem, Restaurant, Review, User, Zone } from "@/types";
 import * as mock from "./mockApi";
 import type * as T from "./apiTypes";
 
 export type * from "./apiTypes";
+export { RESTAURANT_TYPES } from "./apiTypes";
 export { ApiError } from "./mockApi";
 
 const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? "true") !== "false";
@@ -43,6 +44,16 @@ export const getUsers = (ids?: string[]): Promise<User[]> => (USE_MOCK ? mock.ge
 export const getUser = (id: string): Promise<User> => (USE_MOCK ? mock.getUser(id) : http("GET", `/users/${id}`));
 export const updateUser = (id: string, patch: Partial<Pick<User, "name" | "phone" | "email" | "isActive">>): Promise<User> =>
   USE_MOCK ? mock.updateUser(id, patch) : http("PATCH", `/users/${id}`, patch);
+
+// partner sign-up
+export const registerRestaurant = (input: T.RegisterRestaurantInput): Promise<T.AuthResponse> =>
+  USE_MOCK ? mock.registerRestaurant(input) : http("POST", "/auth/register-restaurant", input);
+export const submitDriverApplication = (input: T.DriverApplicationInput): Promise<DriverApplication> =>
+  USE_MOCK ? mock.submitDriverApplication(input) : http("POST", "/driver-applications", input);
+export const getDriverApplications = (): Promise<DriverApplication[]> =>
+  USE_MOCK ? mock.getDriverApplications() : http("GET", "/driver-applications");
+export const reviewDriverApplication = (id: string, input: { approve: boolean; reason?: string; adminId: string }): Promise<DriverApplication> =>
+  USE_MOCK ? mock.reviewDriverApplication(id, input) : http("POST", `/driver-applications/${id}/review`, input);
 
 // zones & addresses
 export const getZones = (): Promise<Zone[]> => (USE_MOCK ? mock.getZones() : http("GET", "/zones"));

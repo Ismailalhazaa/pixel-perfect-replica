@@ -1,6 +1,6 @@
 import type {
   AccountType, Address, Driver, DriverLocation, LedgerEntry, MenuCategory, MenuItem, Order, OrderItem, OrderStatus,
-  Recommendation, Restaurant, Review, Role, Settlement, User, Zone,
+  DriverApplication, Recommendation, Restaurant, Review, Role, Settlement, User, Zone,
 } from "@/types";
 import { canTransition } from "@/lib/orderStatus";
 import { addDeliveredLedger } from "./seed";
@@ -26,6 +26,11 @@ export const login = (phone: string, password: string) =>
   run<T.AuthResponse>(() => {
     const db = getDb();
     const user = db.users.find((u) => u.phone === phone.trim());
+    if (!user) {
+      const app = db.driverApplications.find((a) => a.phone === phone.trim() && a.status !== "APPROVED");
+      if (app?.status === "PENDING") fail("طلب انضمامك كسائق قيد المراجعة لدى الإدارة");
+      if (app?.status === "REJECTED") fail(`تم رفض طلب انضمامك كسائق${app.rejectionReason ? `: ${app.rejectionReason}` : ""}`);
+    }
     if (!user || db.passwords[user.id] !== password) fail("رقم الهاتف أو كلمة المرور غير صحيحة");
     if (!user!.isActive) fail("هذا الحساب موقوف، تواصل مع الإدارة");
     return { user: user!, token: `mock-${user!.id}` };
@@ -51,6 +56,69 @@ export const updateUser = (id: string, patch: Partial<Pick<User, "name" | "phone
     const u = getDb().users.find((x) => x.id === id) ?? fail("المستخدم غير موجود");
     Object.assign(u, patch);
     return u;
+  });
+
+// ---------- partner sign-up ----------
+const phoneTaken = (phone: string) => {
+  const db = getDb();
+  return db.users.some((u) => u.phone === phone) || db.driverApplications.some((a) => a.phone === phone && a.status === "PENDING");
+};
+
+/** Creates a RESTAURANT account immediately; the restaurant stays hidden until an admin approves it. */
+export const registerRestaurant = (input: T.RegisterRestaurantInput) =>
+  run<T.AuthResponse>(() => {
+    const db = getDb();
+    if (phoneTaken(input.phone)) fail("رقم الهاتف مسجّل مسبقاً");
+    if (!input.zoneIds.length) fail("اختر منطقة توصيل واحدة على الأقل");
+    const user: User = { id: uid(), role: "RESTAURANT", name: input.ownerName, phone: input.phone, email: input.email, isActive: true, createdAt: nowIso() };
+    db.users.push(user);
+    db.passwords[user.id] = input.password;
+    const days = [0, 1, 2, 3, 4, 5, 6] as const;
+    db.restaurants.push({
+      id: uid(), ownerId: user.id, name: input.restaurantName, description: input.description, category: input.category,
+      lat: input.lat, lng: input.lng, zoneIds: input.zoneIds, commissionPercent: 12, isApproved: false, isOpen: true, acceptingOrders: true,
+      avgPrepMinutes: input.avgPrepMinutes, ratingAvg: 0, ratingCount: 0, workingHours: days.map((day) => ({ day, open: "10:00", close: "23:00" })),
+    });
+    return { user, token: `mock-${user.id}` };
+  });
+
+/** Driver sign-up only files a request; no account exists until an admin approves it. */
+export const submitDriverApplication = (input: T.DriverApplicationInput) =>
+  run<DriverApplication>(() => {
+    const db = getDb();
+    if (phoneTaken(input.phone)) fail("رقم الهاتف مسجّل مسبقاً أو لديه طلب قيد المراجعة");
+    const { password, ...rest } = input;
+    const app: DriverApplication = { ...rest, id: uid(), status: "PENDING", createdAt: nowIso() };
+    db.driverApplications.push(app);
+    db.applicationPasswords[app.id] = password;
+    pushEvent("db:changed", {});
+    return app;
+  });
+
+export const getDriverApplications = () =>
+  run(() => [...getDb().driverApplications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+
+export const reviewDriverApplication = (id: string, input: { approve: boolean; reason?: string; adminId: string }) =>
+  run<DriverApplication>(() => {
+    const db = getDb();
+    const app = db.driverApplications.find((a) => a.id === id) ?? fail("الطلب غير موجود");
+    if (app.status !== "PENDING") fail("تمت مراجعة هذا الطلب مسبقاً");
+    Object.assign(app, { reviewedByUserId: input.adminId, reviewedAt: nowIso() });
+    if (!input.approve) {
+      app.status = "REJECTED";
+      app.rejectionReason = input.reason?.trim() || undefined;
+    } else {
+      if (db.users.some((u) => u.phone === app.phone)) fail("رقم الهاتف مستخدم بحساب آخر");
+      const user: User = { id: uid(), role: "DRIVER", name: app.name, phone: app.phone, email: app.email, isActive: true, createdAt: nowIso() };
+      db.users.push(user);
+      db.passwords[user.id] = db.applicationPasswords[app.id];
+      db.drivers.push({ id: uid(), userId: user.id, vehicleType: app.vehicleType, isApproved: true, isAvailable: false, ratingAvg: 0, ratingCount: 0 });
+      app.status = "APPROVED";
+      app.userId = user.id;
+    }
+    delete db.applicationPasswords[app.id];
+    pushEvent("db:changed", {});
+    return app;
   });
 
 // ---------- zones ----------
