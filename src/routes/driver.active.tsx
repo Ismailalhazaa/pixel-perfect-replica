@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Banknote, Check, MapPin, Navigation, Phone, Store } from "lucide-react";
 import * as api from "@/services/api";
@@ -43,7 +43,16 @@ function ActiveDelivery() {
   const [follow, setFollow] = useState(true);
   const goingToCustomer = active.data?.[0]?.status === "ON_THE_WAY";
   const target = goingToCustomer ? active.data?.[0]?.deliveryAddress : rest.data;
-  const streetRoute = useStreetRoute(loc.data, target);
+  // Freeze the route origin at the start of each leg so the drawn path never
+  // changes while the driver moves; it only switches when the leg switches.
+  const legKey = o ? `${o.id}:${goingToCustomer ? "cust" : "rest"}` : null;
+  const [routeFrom, setRouteFrom] = useState<{ key: string; lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (legKey && loc.data && routeFrom?.key !== legKey) {
+      setRouteFrom({ key: legKey, lat: loc.data.lat, lng: loc.data.lng });
+    }
+  }, [legKey, loc.data, routeFrom?.key]);
+  const streetRoute = useStreetRoute(routeFrom && routeFrom.key === legKey ? routeFrom : null, target);
 
   const status = useMutation({
     mutationFn: (v: { status: "ON_THE_WAY" | "DELIVERED"; cashCollected?: number }) => api.updateOrderStatus(o!.id, { ...v, userId: user.id, role: "DRIVER" }),
