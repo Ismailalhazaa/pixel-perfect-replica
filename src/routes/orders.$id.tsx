@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowRight, Check, Clock, Phone, Star, X } from "lucide-react";
 import * as api from "@/services/api";
@@ -45,7 +45,15 @@ function Tracking() {
   const rest = useQuery({ queryKey: ["restaurant", o?.restaurantId], queryFn: () => api.getRestaurant(o!.restaurantId), enabled: !!o });
   const driver = useQuery({ queryKey: ["driver", o?.driverId], queryFn: () => api.getDriver(o!.driverId!), enabled: !!o?.driverId });
   const loc = useQuery({ queryKey: ["driverLocation", o?.driverId], queryFn: () => api.getDriverLocation(o!.driverId!), enabled: !!o?.driverId && o.status === "ON_THE_WAY" });
-  const streetRoute = useStreetRoute(o?.status === "ON_THE_WAY" ? loc.data : null, o?.deliveryAddress);
+  // Freeze the route origin when the trip starts so the path stays fixed while the driver moves.
+  const onWay = o?.status === "ON_THE_WAY";
+  const [routeFrom, setRouteFrom] = useState<{ key: string; lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (onWay && o && loc.data && routeFrom?.key !== o.id) {
+      setRouteFrom({ key: o.id, lat: loc.data.lat, lng: loc.data.lng });
+    }
+  }, [onWay, o, loc.data, routeFrom?.key]);
+  const streetRoute = useStreetRoute(onWay && routeFrom?.key === o?.id ? routeFrom : null, o?.deliveryAddress);
   const reviews = useQuery({ queryKey: ["reviews", [id]], queryFn: () => api.getReviews([id]), enabled: o?.status === "DELIVERED" });
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
