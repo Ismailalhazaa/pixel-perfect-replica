@@ -66,7 +66,7 @@ function RestaurantPage() {
         <header className="relative overflow-hidden rounded-3xl">
           <img src={rest.data.imageUrl} alt="" width={976} height={688} className="h-56 w-full object-cover md:h-72" />
           <div className="absolute inset-0 bg-gradient-to-t from-brand-ink via-brand-ink/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-5 text-brand-ink-foreground">
+          <div className="on-photo absolute inset-x-0 bottom-0 p-5 text-brand-ink-foreground">
             <h1 className="text-3xl !text-brand-ink-foreground">{rest.data.name}</h1>
             <p className="mt-1 text-sm opacity-90">{rest.data.description}</p>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
