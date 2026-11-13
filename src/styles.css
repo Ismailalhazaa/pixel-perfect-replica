@@ -121,6 +121,57 @@
   --sidebar-ring: oklch(0.68 0.19 46);
 }
 
+.dark {
+  --brand: oklch(0.7 0.18 46);
+  --brand-soft: oklch(0.32 0.06 50);
+  --brand-ink: oklch(0.9 0.03 180);
+  --brand-ink-foreground: oklch(0.2 0.03 195);
+  --mint: oklch(0.72 0.12 172);
+  --mint-foreground: oklch(0.18 0.03 180);
+  --mint-soft: oklch(0.3 0.05 172);
+
+  --background: oklch(0.18 0.02 200);
+  --foreground: oklch(0.95 0.01 75);
+  --card: oklch(0.23 0.025 200);
+  --card-foreground: oklch(0.95 0.01 75);
+  --popover: oklch(0.23 0.025 200);
+  --popover-foreground: oklch(0.95 0.01 75);
+  --primary: oklch(0.66 0.18 42);
+  --primary-foreground: oklch(0.16 0.02 40);
+  --secondary: oklch(0.28 0.03 200);
+  --secondary-foreground: oklch(0.93 0.02 75);
+  --muted: oklch(0.27 0.02 200);
+  --muted-foreground: oklch(0.72 0.02 195);
+  --accent: oklch(0.3 0.04 55);
+  --accent-foreground: oklch(0.95 0.01 75);
+  --destructive: oklch(0.62 0.2 27);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.32 0.025 200);
+  --input: oklch(0.36 0.025 200);
+  --ring: oklch(0.66 0.18 42);
+
+  --status-new: oklch(0.32 0.04 170);
+  --status-new-foreground: oklch(0.88 0.05 165);
+  --status-preparing: oklch(0.34 0.07 80);
+  --status-preparing-foreground: oklch(0.9 0.09 85);
+  --status-delivered: oklch(0.32 0.06 172);
+  --status-delivered-foreground: oklch(0.88 0.08 172);
+
+  --shadow-soft: 0 6px 18px -8px oklch(0 0 0 / 0.5);
+  --shadow-card: 0 10px 30px -14px oklch(0 0 0 / 0.6);
+
+  --sidebar: oklch(0.15 0.02 200);
+  --sidebar-foreground: oklch(0.95 0.01 75);
+  --sidebar-primary: oklch(0.7 0.18 46);
+  --sidebar-primary-foreground: oklch(0.16 0.02 40);
+  --sidebar-accent: oklch(0.24 0.025 200);
+  --sidebar-accent-foreground: oklch(0.95 0.01 75);
+  --sidebar-border: oklch(0.3 0.025 200);
+  --sidebar-ring: oklch(0.7 0.18 46);
+  color-scheme: dark;
+}
+.dark .leaflet-tile-pane { filter: brightness(0.8) contrast(1.1) saturate(0.8); }
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -149,7 +200,12 @@
   background:
     radial-gradient(circle at 85% 20%, color-mix(in oklab, var(--brand) 35%, transparent), transparent 55%),
     radial-gradient(circle at 10% 90%, color-mix(in oklab, var(--mint) 30%, transparent), transparent 50%),
-    var(--brand-ink);
+    var(--sidebar);
+  --brand-ink-foreground: oklch(0.981 0.014 75);
+}
+
+@utility on-photo {
+  --brand-ink-foreground: oklch(0.981 0.014 75);
 }
 
 /* Leaflet markers */

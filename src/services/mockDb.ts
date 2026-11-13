@@ -11,6 +11,8 @@ export function getDb(): DB {
     if (raw) {
       try {
         cache = JSON.parse(raw) as DB;
+        cache.driverApplications ??= [];
+        cache.applicationPasswords ??= {};
         return cache;
       } catch {
         /* fall through to reseed */

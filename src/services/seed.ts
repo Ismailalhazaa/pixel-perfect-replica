@@ -1,4 +1,4 @@
-import type {
+import type { DriverApplication,
   Address, Driver, DriverLocation, LedgerEntry, MenuCategory, MenuItem, MenuItemOptionGroup, Order, OrderItem,
   OrderStatus, Restaurant, Review, Settlement, User, Zone,
 } from "@/types";
@@ -25,6 +25,8 @@ export interface DB {
   reviews: Review[];
   ledger: LedgerEntry[];
   settlements: Settlement[];
+  driverApplications: DriverApplication[];
+  applicationPasswords: Record<string, string>; // applicationId -> password until approved (mock only)
   orderSeq: number;
 }
 
@@ -330,7 +332,7 @@ export function buildSeed(): DB {
 
   const db: DB = {
     users, passwords, zones, addresses, restaurants, categories, menuItems, drivers, driverLocations,
-    orders, reviews: [], ledger: [], settlements: [], orderSeq,
+    orders, reviews: [], ledger: [], settlements: [], driverApplications: [], applicationPasswords: {}, orderSeq,
   };
   orders.filter((o) => o.status === "DELIVERED").forEach((o) => addDeliveredLedger(db, o, id("led")));
   // give remaining ledger ids

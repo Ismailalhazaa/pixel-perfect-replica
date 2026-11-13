@@ -63,3 +63,13 @@ export interface AdminStats {
 }
 
 export type { AccountType };
+
+export const RESTAURANT_TYPES = ["مطعم وجبات سريعة", "مطعم شرقي", "كافيه", "مشاوي", "شاورما", "بيتزا", "برجر", "حلويات", "عصائر", "فطور", "بقالة", "مخبز"] as const;
+export interface RegisterRestaurantInput {
+  ownerName: string; phone: string; email?: string; password: string;
+  restaurantName: string; category: string; description?: string; lat: number; lng: number; zoneIds: string[]; avgPrepMinutes: number;
+}
+export interface DriverApplicationInput {
+  name: string; phone: string; email?: string; password: string; vehicleType: Driver["vehicleType"];
+  nationalId: string; vehiclePlate?: string; zoneId: string; notes?: string;
+}

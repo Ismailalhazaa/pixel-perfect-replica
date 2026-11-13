@@ -5,6 +5,7 @@ import { Logo } from "@/components/common/Logo";
 import { useSession } from "@/stores/session";
 import { cartCount, useCart } from "@/stores/cart";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 const navCls = "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl px-3 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary";
@@ -31,6 +32,7 @@ export function CustomerShell({ children, hideBottomNav }: { children: ReactNode
             {isCustomer && <Link to="/profile" className={navCls} activeProps={activeCls}>حسابي</Link>}
           </nav>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button variant="outline" size="icon" className="relative" aria-label={`السلة (${count})`} onClick={() => navigate({ to: "/cart" })}>
               <ShoppingBag />
               {count > 0 && (
