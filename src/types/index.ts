@@ -57,3 +57,12 @@ export interface LedgerEntry { id: string; accountType: AccountType; accountId: 
 export interface Settlement { id: string; accountType: AccountType; accountId: string; periodStart: string; periodEnd: string; totalOwedToAccount: number; totalOwedByAccount: number; netAmount: number; /* positive = platform pays the account, negative = account pays the platform */ status: SettlementStatus; confirmedByUserId?: string; confirmedAt?: string; }
 
 export interface Recommendation { menuItemId: string; restaurantId: string; reason: string; }
+
+export type DriverApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+/** A driver sign-up request. No user account exists until an admin approves it. */
+export interface DriverApplication {
+  id: string; name: string; phone: string; email?: string; vehicleType: Driver['vehicleType'];
+  nationalId: string; vehiclePlate?: string; zoneId: string; notes?: string;
+  status: DriverApplicationStatus; rejectionReason?: string; reviewedByUserId?: string; reviewedAt?: string;
+  createdAt: string; userId?: string;
+}

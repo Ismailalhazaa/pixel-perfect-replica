@@ -1,4 +1,4 @@
-import type {
+import type { DriverApplication,
   Address, Driver, DriverLocation, LedgerEntry, MenuCategory, MenuItem, MenuItemOptionGroup, Order, OrderItem,
   OrderStatus, Restaurant, Review, Settlement, User, Zone,
 } from "@/types";
@@ -25,6 +25,7 @@ export interface DB {
   reviews: Review[];
   ledger: LedgerEntry[];
   settlements: Settlement[];
+  driverApplications: DriverApplication[];
   orderSeq: number;
 }
 
