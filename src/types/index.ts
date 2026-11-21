@@ -6,7 +6,8 @@ export type LedgerType =
   | 'DELIVERY_EARNING'    // driver's share of the delivery fee; driver keeps it
   | 'RESTAURANT_PAYABLE'  // subtotal minus commission owed to the restaurant
   | 'PLATFORM_COMMISSION' // commission kept by the platform
-  | 'SETTLEMENT';         // a confirmed cash settlement that reduces the balance
+  | 'SETTLEMENT'          // a confirmed cash settlement that reduces the balance
+  | 'CASH_SHORTAGE';      // driver collected less than the total; driver owes the difference
 export type SettlementStatus = 'DRAFT' | 'CONFIRMED';
 
 export interface User { id: string; role: Role; name: string; phone: string; email?: string; isActive: boolean; createdAt: string; }
@@ -19,7 +20,7 @@ export interface Restaurant {
   id: string; ownerId: string; name: string; description?: string; imageUrl?: string; category: string;
   lat: number; lng: number; zoneIds: string[]; commissionPercent: number;
   isApproved: boolean; isOpen: boolean; acceptingOrders: boolean;
-  avgPrepMinutes: number; ratingAvg: number; ratingCount: number;
+  avgPrepMinutes: number; minOrderAmount: number; ratingAvg: number; ratingCount: number;
   workingHours: { day: 0|1|2|3|4|5|6; open: string; close: string }[]; // "HH:mm"
 }
 
@@ -47,14 +48,17 @@ export interface Order {
   customerPhone: string; notes?: string; status: OrderStatus;
   subtotal: number; deliveryFee: number; total: number; // total = subtotal + deliveryFee, paid in cash on delivery
   cashCollected?: number; estimatedMinutes?: number;
+  cashShortage?: number; cashShortageReason?: string;
+  arrivedAtRestaurantAt?: string; arrivedAtCustomerAt?: string; cancelledReason?: string;
+  excludedDriverIds?: string[]; // drivers who gave up this order; not offered to them again
   items: OrderItem[]; history: OrderStatusHistory[];
   createdAt: string; deliveredAt?: string;
 }
 
 export interface Review { id: string; orderId: string; authorId: string; targetType: 'RESTAURANT' | 'DRIVER'; targetId: string; stars: 1|2|3|4|5; comment?: string; createdAt: string; }
 
-export interface LedgerEntry { id: string; accountType: AccountType; accountId: string; orderId?: string; settlementId?: string; type: LedgerType; amount: number; /* always positive; meaning comes from type */ createdAt: string; }
-export interface Settlement { id: string; accountType: AccountType; accountId: string; periodStart: string; periodEnd: string; totalOwedToAccount: number; totalOwedByAccount: number; netAmount: number; /* positive = platform pays the account, negative = account pays the platform */ status: SettlementStatus; confirmedByUserId?: string; confirmedAt?: string; }
+export interface LedgerEntry { id: string; accountType: AccountType; accountId: string; orderId?: string; settlementId?: string; type: LedgerType; amount: number; direction?: 'PLATFORM_PAYS' | 'ACCOUNT_PAYS'; /* always positive; meaning comes from type */ createdAt: string; }
+export interface Settlement { id: string; accountType: AccountType; accountId: string; periodStart: string; periodEnd: string; totalOwedToAccount: number; totalOwedByAccount: number; entryIds: string[]; netAmount: number; /* positive = platform pays the account, negative = account pays the platform */ status: SettlementStatus; confirmedByUserId?: string; confirmedAt?: string; }
 
 export interface Recommendation { menuItemId: string; restaurantId: string; reason: string; }
 

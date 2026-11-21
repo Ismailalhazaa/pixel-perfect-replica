@@ -1,4 +1,4 @@
-import type { AccountType, Driver, LedgerEntry, MenuCategory, MenuItem, Order, OrderStatus, Role, User } from "@/types";
+import type { AccountType, Driver, LedgerEntry, MenuCategory, MenuItem, Order, OrderStatus, Review, User } from "@/types";
 
 export interface AuthResponse { user: User; token: string }
 export interface RegisterInput { name: string; phone: string; email?: string; password: string }
@@ -7,7 +7,6 @@ export interface Menu { categories: MenuCategory[]; items: MenuItem[] }
 export interface OrderQuery { customerId?: string; restaurantId?: string; driverId?: string; statuses?: OrderStatus[]; from?: string; to?: string }
 
 export interface CreateOrderInput {
-  customerId: string;
   restaurantId: string;
   zoneId: string;
   deliveryAddress: Order["deliveryAddress"];
@@ -18,11 +17,10 @@ export interface CreateOrderInput {
 
 export interface UpdateStatusInput {
   status: OrderStatus;
-  userId: string;
-  role: Role;
   reason?: string;
   estimatedMinutes?: number;
   cashCollected?: number;
+  shortageReason?: string;
 }
 
 export interface DriverWithUser extends Driver { user: User }
@@ -73,3 +71,8 @@ export interface DriverApplicationInput {
   name: string; phone: string; email?: string; password: string; vehicleType: Driver["vehicleType"];
   nationalId: string; vehiclePlate?: string; zoneId: string; notes?: string;
 }
+
+export interface ReviewInput { orderId: string; targetType: Review["targetType"]; targetId: string; stars: number; comment?: string }
+export interface ReviewApplicationInput { approve: boolean; reason?: string }
+export interface LatLng { lat: number; lng: number }
+export interface RouteResult { points: [number, number][]; distanceKm: number; durationMin: number; street: boolean }

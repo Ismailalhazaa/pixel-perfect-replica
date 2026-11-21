@@ -1,0 +1,12 @@
+# Roadmap
+- [ ] Partner sign-up: restaurant registration (type), driver application reviewed by admin
+- [ ] Dark mode toggle
+- [ ] Stage 1.1 identity from token + ownership checks
+- [ ] Stage 1.2 release driver / "تعذّر إكمال الطلب"
+- [ ] Stage 1.3 createOrder validation + minOrderAmount
+- [ ] Stage 1.4 acceptDelivery & review validation
+- [ ] Stage 1.5 Asia/Damascus time helpers
+- [ ] Stage 1.6 cash shortage policy
+- [ ] Stage 1.7 settlements entryIds/overlap/direction/delete draft
+- [ ] Stage 1.8 routing via api.getRoute + flag
+- [ ] Stage 1.9 type changes

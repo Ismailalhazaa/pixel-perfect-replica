@@ -3,6 +3,7 @@ import type {
   DriverApplication, Recommendation, Restaurant, Review, Role, Settlement, User, Zone,
 } from "@/types";
 import { canTransition } from "@/lib/orderStatus";
+import { dayKey, hourOf, lastDayKeys, localClock } from "@/lib/time";
 import { addDeliveredLedger } from "./seed";
 import { delay, getDb, nowIso, saveDb, uid } from "./mockDb";
 import { pushEvent } from "./realtime";
@@ -20,6 +21,37 @@ async function run<X>(fn: () => X): Promise<X> {
   saveDb();
   return clone(out);
 }
+
+// ---------- current user (derived from the token, like the real backend) ----------
+let currentToken: string | null = null;
+export const setMockToken = (t: string | null) => (currentToken = t);
+
+export function getCurrentUser(): User {
+  const id = currentToken?.startsWith("mock-") ? currentToken.slice(5) : null;
+  const u = id ? getDb().users.find((x) => x.id === id) : undefined;
+  if (!u) fail("يجب تسجيل الدخول أولاً");
+  if (!u!.isActive) fail("هذا الحساب موقوف، تواصل مع الإدارة");
+  return u!;
+}
+function requireRole(...roles: Role[]): User {
+  const u = getCurrentUser();
+  if (!roles.includes(u.role)) fail("ليس لديك صلاحية لهذا الإجراء");
+  return u;
+}
+const requireAdmin = () => requireRole("ADMIN");
+function myRestaurant(u: User) {
+  return getDb().restaurants.find((r) => r.ownerId === u.id) ?? fail("لا يوجد مطعم مرتبط بهذا الحساب");
+}
+function myDriver(u: User) {
+  return getDb().drivers.find((d) => d.userId === u.id) ?? fail("لا يوجد ملف سائق لهذا الحساب");
+}
+/** Admin, or the owner of the restaurant. */
+function requireRestaurantAccess(restaurantId: string) {
+  const u = requireRole("ADMIN", "RESTAURANT");
+  if (u.role === "RESTAURANT" && myRestaurant(u).id !== restaurantId) fail("لا يمكنك تعديل مطعم آخر");
+  return u;
+}
+const DRIVER_ACTIVE: OrderStatus[] = ["ACCEPTED", "PREPARING", "READY", "ON_THE_WAY"];
 
 // ---------- auth & users ----------
 export const login = (phone: string, password: string) =>
@@ -53,6 +85,8 @@ export const getUser = (id: string) => run(() => getDb().users.find((u) => u.id 
 
 export const updateUser = (id: string, patch: Partial<Pick<User, "name" | "phone" | "email" | "isActive">>) =>
   run(() => {
+    const me = getCurrentUser();
+    if (me.role !== "ADMIN" && (me.id !== id || patch.isActive !== undefined)) fail("ليس لديك صلاحية لهذا الإجراء");
     const u = getDb().users.find((x) => x.id === id) ?? fail("المستخدم غير موجود");
     Object.assign(u, patch);
     return u;
@@ -96,15 +130,17 @@ export const submitDriverApplication = (input: T.DriverApplicationInput) =>
   });
 
 export const getDriverApplications = () =>
-  run(() => [...getDb().driverApplications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  run(() => requireAdmin() && [...getDb().driverApplications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
 
-export const reviewDriverApplication = (id: string, input: { approve: boolean; reason?: string; adminId: string }) =>
+export const reviewDriverApplication = (id: string, input: T.ReviewApplicationInput) =>
   run<DriverApplication>(() => {
+    const admin = requireAdmin();
     const db = getDb();
     const app = db.driverApplications.find((a) => a.id === id) ?? fail("الطلب غير موجود");
     if (app.status !== "PENDING") fail("تمت مراجعة هذا الطلب مسبقاً");
-    Object.assign(app, { reviewedByUserId: input.adminId, reviewedAt: nowIso() });
+    Object.assign(app, { reviewedByUserId: admin.id, reviewedAt: nowIso() });
     if (!input.approve) {
+      if (!input.reason?.trim()) fail("اكتب سبب الرفض");
       app.status = "REJECTED";
       app.rejectionReason = input.reason?.trim() || undefined;
     } else {
@@ -125,6 +161,8 @@ export const reviewDriverApplication = (id: string, input: { approve: boolean; r
 export const getZones = () => run(() => getDb().zones);
 export const saveZone = (z: Omit<Zone, "id"> & { id?: string }) =>
   run(() => {
+    requireAdmin();
+    if (!Number.isInteger(z.deliveryFee) || z.deliveryFee < 0) fail("أجرة التوصيل يجب أن تكون عدداً صحيحاً");
     const db = getDb();
     const ex = z.id ? db.zones.find((x) => x.id === z.id) : undefined;
     if (ex) return Object.assign(ex, z);
@@ -167,8 +205,16 @@ export const getRestaurantByOwner = (ownerId: string) =>
   run(() => getDb().restaurants.find((r) => r.ownerId === ownerId) ?? fail("لا يوجد مطعم مرتبط بهذا الحساب"));
 export const updateRestaurant = (id: string, patch: Partial<Restaurant>) =>
   run(() => {
+    const u = requireRestaurantAccess(id);
     const r = getDb().restaurants.find((x) => x.id === id) ?? fail("المطعم غير موجود");
-    Object.assign(r, patch, { id });
+    const p = { ...patch };
+    if (u.role !== "ADMIN") {
+      if (p.isApproved !== undefined || p.commissionPercent !== undefined) fail("الموافقة والعمولة من صلاحيات الإدارة فقط");
+      delete p.ownerId; delete p.ratingAvg; delete p.ratingCount;
+    }
+    if (p.commissionPercent !== undefined && (p.commissionPercent < 0 || p.commissionPercent > 100)) fail("نسبة العمولة غير صالحة");
+    if (p.minOrderAmount !== undefined && (!Number.isInteger(p.minOrderAmount) || p.minOrderAmount < 0)) fail("الحد الأدنى للطلب يجب أن يكون عدداً صحيحاً");
+    Object.assign(r, p, { id });
     return r;
   });
 export const getCategoriesList = () => run(() => Array.from(new Set(getDb().restaurants.map((r) => r.category))));
@@ -183,7 +229,9 @@ export const getMenu = (restaurantId: string) =>
   });
 export const saveMenuItem = (m: Omit<MenuItem, "id"> & { id?: string }) =>
   run(() => {
+    requireRestaurantAccess(m.restaurantId);
     const db = getDb();
+    if (!Number.isInteger(m.price) || m.price <= 0) fail("السعر يجب أن يكون عدداً صحيحاً موجباً");
     const ex = m.id ? db.menuItems.find((x) => x.id === m.id) : undefined;
     if (ex) return Object.assign(ex, m);
     const nm: MenuItem = { ...m, id: uid() };
@@ -193,11 +241,14 @@ export const saveMenuItem = (m: Omit<MenuItem, "id"> & { id?: string }) =>
 export const deleteMenuItem = (id: string) =>
   run(() => {
     const db = getDb();
+    const mi = db.menuItems.find((m) => m.id === id) ?? fail("الصنف غير موجود");
+    requireRestaurantAccess(mi.restaurantId);
     db.menuItems = db.menuItems.filter((m) => m.id !== id);
     return true;
   });
 export const saveCategory = (c: Omit<MenuCategory, "id"> & { id?: string }) =>
   run(() => {
+    requireRestaurantAccess(c.restaurantId);
     const db = getDb();
     const ex = c.id ? db.categories.find((x) => x.id === c.id) : undefined;
     if (ex) return Object.assign(ex, c);
@@ -208,27 +259,60 @@ export const saveCategory = (c: Omit<MenuCategory, "id"> & { id?: string }) =>
 export const deleteCategory = (id: string) =>
   run(() => {
     const db = getDb();
+    const cat = db.categories.find((c) => c.id === id) ?? fail("التصنيف غير موجود");
+    requireRestaurantAccess(cat.restaurantId);
     if (db.menuItems.some((m) => m.categoryId === id)) fail("لا يمكن حذف تصنيف يحتوي على أصناف");
     db.categories = db.categories.filter((c) => c.id !== id);
     return true;
   });
 
 // ---------- orders ----------
+const toMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
+/** Open now per workingHours in the app timezone. Supports ranges crossing midnight. */
+export function isWithinWorkingHours(rest: Restaurant, at: string | number | Date = Date.now()): boolean {
+  const { day, minutes } = localClock(at);
+  const inRange = (d: number, mins: number, allowOvernightTail: boolean) =>
+    rest.workingHours.some((h) => {
+      if (h.day !== d) return false;
+      const o = toMin(h.open), c = toMin(h.close);
+      if (c > o) return !allowOvernightTail && mins >= o && mins <= c;
+      // overnight range: today from open to midnight, tomorrow from midnight to close
+      return allowOvernightTail ? mins <= c : mins >= o;
+    });
+  return inRange(day, minutes, false) || inRange((day + 6) % 7, minutes, true);
+}
+
 export const createOrder = (input: T.CreateOrderInput) =>
   run(() => {
+    const me = requireRole("CUSTOMER");
     const db = getDb();
     const rest = db.restaurants.find((r) => r.id === input.restaurantId) ?? fail("المطعم غير موجود");
-    if (!rest.isOpen || !rest.acceptingOrders) fail("المطعم لا يستقبل طلبات حالياً");
-    const zone = db.zones.find((z) => z.id === input.zoneId && z.isActive) ?? fail("منطقة التوصيل غير متاحة");
+    if (!rest.isApproved) fail("هذا المطعم غير معتمد بعد");
+    if (!rest.isOpen) fail("المطعم مغلق حالياً");
+    if (!rest.acceptingOrders) fail("المطعم أوقف استقبال الطلبات مؤقتاً");
+    if (!isWithinWorkingHours(rest)) fail("المطعم خارج أوقات الدوام الآن");
+    const zone = db.zones.find((z) => z.id === input.zoneId) ?? fail("منطقة التوصيل غير موجودة");
+    if (!zone.isActive) fail("منطقة التوصيل غير مفعّلة حالياً");
+    if (!rest.zoneIds.includes(zone.id)) fail("المطعم لا يوصل إلى هذه المنطقة");
     if (!input.items.length) fail("السلة فارغة");
     const orderId = uid();
     const items: OrderItem[] = input.items.map((line) => {
-      const mi = db.menuItems.find((m) => m.id === line.menuItemId && m.restaurantId === rest.id) ?? fail("صنف غير موجود");
+      const mi = db.menuItems.find((m) => m.id === line.menuItemId && m.restaurantId === rest.id) ?? fail("صنف غير موجود في قائمة هذا المطعم");
+      if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 50) fail(`الكمية للصنف "${mi.name}" يجب أن تكون عدداً صحيحاً بين 1 و 50`);
       if (!mi.isAvailable) fail(`الصنف "${mi.name}" غير متوفر حالياً`);
+      const seen = new Set<string>();
       const selectedOptions = line.selectedOptions.map(({ groupId, optionId }) => {
-        const g = mi.optionGroups.find((x) => x.id === groupId) ?? fail("خيار غير صالح");
-        const o = g.options.find((x) => x.id === optionId) ?? fail("خيار غير صالح");
+        const g = mi.optionGroups.find((x) => x.id === groupId) ?? fail(`خيار لا ينتمي إلى الصنف "${mi.name}"`);
+        const o = g.options.find((x) => x.id === optionId) ?? fail(`خيار لا ينتمي إلى الصنف "${mi.name}"`);
+        const k = `${groupId}:${optionId}`;
+        if (seen.has(k)) fail(`خيار مكرر في الصنف "${mi.name}"`);
+        seen.add(k);
         return { groupId, optionId, nameSnapshot: o.name, priceDeltaSnapshot: o.priceDelta };
+      });
+      mi.optionGroups.forEach((g) => {
+        const n = selectedOptions.filter((x) => x.groupId === g.id).length;
+        if (g.required && n === 0) fail(`اختر "${g.name}" للصنف "${mi.name}"`);
+        if (n > g.maxSelect) fail(`يمكنك اختيار ${g.maxSelect} كحد أقصى من "${g.name}"`);
       });
       const unit = mi.price + selectedOptions.reduce((a, b) => a + b.priceDeltaSnapshot, 0);
       return {
@@ -237,14 +321,16 @@ export const createOrder = (input: T.CreateOrderInput) =>
       };
     });
     const subtotal = items.reduce((a, b) => a + b.lineTotal, 0);
+    const min = rest.minOrderAmount ?? 0;
+    if (subtotal < min) fail(`الحد الأدنى للطلب من هذا المطعم ${min.toLocaleString("ar-SY")} ل.س`);
     const createdAt = nowIso();
     db.orderSeq += 1;
     const order: Order = {
-      id: orderId, code: `WS-${db.orderSeq}`, customerId: input.customerId, restaurantId: rest.id, zoneId: zone.id,
+      id: orderId, code: `WS-${db.orderSeq}`, customerId: me.id, restaurantId: rest.id, zoneId: zone.id,
       deliveryAddress: input.deliveryAddress, customerPhone: input.customerPhone, notes: input.notes, status: "NEW",
       subtotal, deliveryFee: zone.deliveryFee, total: subtotal + zone.deliveryFee,
       estimatedMinutes: rest.avgPrepMinutes + 15, items,
-      history: [{ id: uid(), orderId, status: "NEW", changedByUserId: input.customerId, createdAt }],
+      history: [{ id: uid(), orderId, status: "NEW", changedByUserId: me.id, createdAt }],
       createdAt,
     };
     db.orders.unshift(order);
@@ -269,25 +355,77 @@ export const getOrders = (f: T.OrderQuery = {}) =>
 
 export const getOrder = (id: string) => run(() => getDb().orders.find((o) => o.id === id) ?? fail("الطلب غير موجود"));
 
+/** Throws unless the current user may act on this order in their role. */
+function assertOrderOwnership(me: User, o: Order) {
+  if (me.role === "CUSTOMER" && o.customerId !== me.id) fail("لا يمكنك تعديل طلب لا يخصك");
+  if (me.role === "RESTAURANT" && myRestaurant(me).id !== o.restaurantId) fail("هذا الطلب ليس لمطعمك");
+  if (me.role === "DRIVER" && o.driverId !== myDriver(me).id) fail("هذا الطلب غير مسند إليك");
+}
+
+function freeDriver(driverId?: string) {
+  const d = driverId ? getDb().drivers.find((x) => x.id === driverId) : undefined;
+  if (d && d.isApproved) d.isAvailable = true;
+}
+
 export const updateOrderStatus = (orderId: string, input: T.UpdateStatusInput) =>
   run(() => {
+    const me = getCurrentUser();
     const db = getDb();
     const o = db.orders.find((x) => x.id === orderId) ?? fail("الطلب غير موجود");
-    if (!canTransition(input.role, o.status, input.status)) fail("لا يمكن تغيير حالة الطلب بهذا الشكل");
+    assertOrderOwnership(me, o);
+    if (!canTransition(me.role, o.status, input.status)) fail("لا يمكن تغيير حالة الطلب بهذا الشكل");
     if (input.status === "ON_THE_WAY" && !o.driverId) fail("لم يتم تعيين سائق للطلب بعد");
     if (input.status === "DELIVERED") {
-      if (input.cashCollected === undefined || input.cashCollected < 0) fail("أدخل المبلغ المستلم");
-      o.cashCollected = Math.round(input.cashCollected!);
+      const cash = input.cashCollected;
+      if (cash === undefined || !Number.isInteger(cash) || cash < 0) fail("أدخل المبلغ المستلم كعدد صحيح");
+      if (cash! > o.total) fail("المبلغ المستلم لا يمكن أن يتجاوز إجمالي الطلب");
+      if (cash! < o.total) {
+        if (!input.shortageReason?.trim()) fail("اكتب سبب نقص المبلغ المستلم");
+        o.cashShortage = o.total - cash!;
+        o.cashShortageReason = input.shortageReason!.trim();
+      }
+      o.cashCollected = cash;
       o.deliveredAt = nowIso();
     }
+    if (input.status === "CANCELLED" || input.status === "REJECTED") o.cancelledReason = input.reason;
     if (input.estimatedMinutes) o.estimatedMinutes = input.estimatedMinutes;
     o.status = input.status;
-    o.history.push({ id: uid(), orderId, status: input.status, changedByUserId: input.userId, reason: input.reason, createdAt: nowIso() });
-    if (input.status === "DELIVERED") {
-      addDeliveredLedger(db, o);
-      const d = db.drivers.find((x) => x.id === o.driverId);
-      if (d) d.isAvailable = true;
+    o.history.push({ id: uid(), orderId, status: input.status, changedByUserId: me.id, reason: input.reason, createdAt: nowIso() });
+    if (input.status === "DELIVERED") addDeliveredLedger(db, o);
+    if (input.status === "DELIVERED" || input.status === "CANCELLED" || input.status === "REJECTED") freeDriver(o.driverId);
+    pushEvent("order:updated", clone(o));
+    return o;
+  });
+
+/** Driver records arrival at the restaurant or the customer. */
+export const markArrived = (orderId: string, at: "RESTAURANT" | "CUSTOMER") =>
+  run(() => {
+    const me = requireRole("DRIVER");
+    const o = getDb().orders.find((x) => x.id === orderId) ?? fail("الطلب غير موجود");
+    assertOrderOwnership(me, o);
+    if (at === "RESTAURANT") o.arrivedAtRestaurantAt ??= nowIso();
+    else {
+      if (o.status !== "ON_THE_WAY") fail("استلم الطلب من المطعم أولاً");
+      o.arrivedAtCustomerAt ??= nowIso();
     }
+    pushEvent("order:updated", clone(o));
+    return o;
+  });
+
+/** Driver gives up before pickup: order goes back to dispatch, excluding this driver. */
+export const abandonDelivery = (orderId: string, reason: string) =>
+  run(() => {
+    const me = requireRole("DRIVER");
+    const d = myDriver(me);
+    const o = getDb().orders.find((x) => x.id === orderId) ?? fail("الطلب غير موجود");
+    if (o.driverId !== d.id) fail("هذا الطلب غير مسند إليك");
+    if (!["ACCEPTED", "PREPARING", "READY"].includes(o.status)) fail("لا يمكن التخلي عن الطلب بعد استلامه");
+    if (!reason?.trim()) fail("اكتب سبب تعذّر إكمال الطلب");
+    o.driverId = undefined;
+    o.arrivedAtRestaurantAt = undefined;
+    o.excludedDriverIds = Array.from(new Set([...(o.excludedDriverIds ?? []), d.id]));
+    o.history.push({ id: uid(), orderId, status: o.status, changedByUserId: me.id, reason: `تعذّر إكمال الطلب: ${reason.trim()}`, createdAt: nowIso() });
+    freeDriver(d.id);
     pushEvent("order:updated", clone(o));
     return o;
   });
@@ -308,9 +446,17 @@ export const getDriverByUser = (userId: string) =>
   run(() => getDb().drivers.find((d) => d.userId === userId) ?? fail("لا يوجد ملف سائق لهذا الحساب"));
 export const updateDriver = (id: string, patch: Partial<Driver>) =>
   run(() => {
+    const me = requireRole("ADMIN", "DRIVER");
     const d = getDb().drivers.find((x) => x.id === id) ?? fail("السائق غير موجود");
-    if (patch.isAvailable && !d.isApproved) fail("حسابك بانتظار موافقة الإدارة");
-    Object.assign(d, patch, { id });
+    const p = { ...patch };
+    if (me.role === "DRIVER") {
+      if (d.userId !== me.id) fail("لا يمكنك تعديل سائق آخر");
+      if (p.isApproved !== undefined) fail("الموافقة من صلاحيات الإدارة فقط");
+      delete p.ratingAvg; delete p.ratingCount; delete p.userId;
+    }
+    if (p.isAvailable && !(p.isApproved ?? d.isApproved)) fail("حسابك بانتظار موافقة الإدارة");
+    if (p.isAvailable && getDb().orders.some((o) => o.driverId === id && DRIVER_ACTIVE.includes(o.status))) fail("لديك توصيل جارٍ");
+    Object.assign(d, p, { id });
     return d;
   });
 export const getDriverLocation = (driverId: string) =>
@@ -321,33 +467,64 @@ export const getDriverOffers = (driverId: string) =>
     const db = getDb();
     const d = db.drivers.find((x) => x.id === driverId);
     if (!d?.isAvailable || !d.isApproved) return [];
-    if (db.orders.some((o) => o.driverId === driverId && ["ACCEPTED", "PREPARING", "READY", "ON_THE_WAY"].includes(o.status))) return [];
+    if (db.orders.some((o) => o.driverId === driverId && DRIVER_ACTIVE.includes(o.status))) return [];
     return db.orders
-      .filter((o) => !o.driverId && ["ACCEPTED", "PREPARING", "READY"].includes(o.status))
+      .filter((o) => !o.driverId && ["ACCEPTED", "PREPARING", "READY"].includes(o.status) && !(o.excludedDriverIds ?? []).includes(driverId))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   });
 
-export const acceptDelivery = (orderId: string, driverId: string) =>
+/** Check + assign in one synchronous step (the backend does this as one atomic UPDATE). */
+export const acceptDelivery = (orderId: string) =>
   run(() => {
+    const me = requireRole("DRIVER");
     const db = getDb();
+    const d = myDriver(me);
     const o = db.orders.find((x) => x.id === orderId) ?? fail("الطلب غير موجود");
+    if (!["ACCEPTED", "PREPARING", "READY"].includes(o.status)) fail("هذا الطلب غير متاح للتوصيل");
     if (o.driverId) fail("تم إسناد الطلب لسائق آخر");
-    o.driverId = driverId;
-    const d = db.drivers.find((x) => x.id === driverId);
-    if (d) d.isAvailable = false;
+    if ((o.excludedDriverIds ?? []).includes(d.id)) fail("لا يمكنك قبول طلب تخلّيت عنه سابقاً");
+    if (!d.isApproved) fail("حسابك بانتظار موافقة الإدارة");
+    if (!d.isAvailable) fail("فعّل حالة التوفر أولاً");
+    if (db.orders.some((x) => x.driverId === d.id && DRIVER_ACTIVE.includes(x.status))) fail("لديك توصيل جارٍ بالفعل");
+    o.driverId = d.id;
+    d.isAvailable = false;
     const rest = db.restaurants.find((r) => r.id === o.restaurantId)!;
-    const loc = db.driverLocations.find((l) => l.driverId === driverId);
+    const loc = db.driverLocations.find((l) => l.driverId === d.id);
     if (loc) Object.assign(loc, { lat: rest.lat + 0.004, lng: rest.lng - 0.003, updatedAt: nowIso() });
     pushEvent("order:updated", clone(o));
     return o;
   });
 
+// ---------- routing ----------
+const toRad = (x: number) => (x * Math.PI) / 180;
+export function haversineKm(a: T.LatLng, b: T.LatLng) {
+  const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+export const ASSUMED_SPEED_KMH = 20;
+export function straightRoute(from: T.LatLng, to: T.LatLng): T.RouteResult {
+  const distanceKm = Math.round(haversineKm(from, to) * 1.3 * 10) / 10; // road factor
+  return { points: [[from.lat, from.lng], [to.lat, to.lng]], distanceKm, durationMin: Math.max(1, Math.round((distanceKm / ASSUMED_SPEED_KMH) * 60)), street: false };
+}
+export const getRoute = async (from: T.LatLng, to: T.LatLng) => {
+  await delay(50, 150);
+  return straightRoute(from, to);
+};
+
 // ---------- reviews ----------
-export const createReview = (r: Omit<Review, "id" | "createdAt">) =>
+export const createReview = (r: T.ReviewInput) =>
   run(() => {
+    const me = requireRole("CUSTOMER");
     const db = getDb();
-    if (db.reviews.some((x) => x.orderId === r.orderId && x.targetType === r.targetType)) fail("تم تقييم هذا الطلب مسبقاً");
-    const nr: Review = { ...r, id: uid(), createdAt: nowIso() };
+    const o = db.orders.find((x) => x.id === r.orderId) ?? fail("الطلب غير موجود");
+    if (o.customerId !== me.id) fail("لا يمكنك تقييم طلب لا يخصك");
+    if (o.status !== "DELIVERED") fail("يمكن التقييم بعد تسليم الطلب فقط");
+    if (!Number.isInteger(r.stars) || r.stars < 1 || r.stars > 5) fail("التقييم يجب أن يكون من 1 إلى 5 نجوم");
+    const validTarget = r.targetType === "RESTAURANT" ? r.targetId === o.restaurantId : !!o.driverId && r.targetId === o.driverId;
+    if (!validTarget) fail("جهة التقييم لا تخص هذا الطلب");
+    if (db.reviews.some((x) => x.orderId === r.orderId && x.targetType === r.targetType && x.targetId === r.targetId)) fail("تم تقييم هذا الطلب مسبقاً");
+    const nr: Review = { orderId: r.orderId, targetType: r.targetType, targetId: r.targetId, comment: r.comment, stars: r.stars as Review["stars"], authorId: me.id, id: uid(), createdAt: nowIso() };
     db.reviews.push(nr);
     const target = r.targetType === "RESTAURANT" ? db.restaurants.find((x) => x.id === r.targetId) : db.drivers.find((x) => x.id === r.targetId);
     if (target) {
@@ -359,24 +536,27 @@ export const createReview = (r: Omit<Review, "id" | "createdAt">) =>
 export const getReviews = (orderIds: string[]) => run(() => getDb().reviews.filter((r) => orderIds.includes(r.orderId)));
 
 // ---------- ledger & settlements ----------
-function balanceOf(entries: LedgerEntry[], accountType: AccountType): T.AccountBalance {
+export function balanceOf(entries: LedgerEntry[], accountType: AccountType): T.AccountBalance {
   const sum = (t: LedgerEntry["type"]) => entries.filter((e) => e.type === t).reduce((a, b) => a + b.amount, 0);
-  const settlementsNet = entries.filter((e) => e.type === "SETTLEMENT").reduce((a, b) => a + b.amount, 0);
+  const settlementsNet = entries.filter((e) => e.type === "SETTLEMENT").reduce((a, b) => a + (b.direction === "ACCOUNT_PAYS" ? -b.amount : b.amount), 0);
+  const unsettled = entries.filter((e) => !e.settlementId && e.type !== "SETTLEMENT");
+  const uSum = (t: LedgerEntry["type"]) => unsettled.filter((e) => e.type === t).reduce((a, b) => a + b.amount, 0);
   if (accountType === "DRIVER") {
-    const cash = sum("CASH_COLLECTED");
-    const earn = sum("DELIVERY_EARNING");
-    const unsettled = entries.filter((e) => !e.settlementId && e.type !== "SETTLEMENT");
-    const owedBy = unsettled.filter((e) => e.type === "CASH_COLLECTED").reduce((a, b) => a + b.amount, 0);
-    const owedTo = unsettled.filter((e) => e.type === "DELIVERY_EARNING").reduce((a, b) => a + b.amount, 0);
-    return { owedToAccount: owedTo, owedByAccount: owedBy, net: owedTo - owedBy, totals: { CASH_COLLECTED: cash, DELIVERY_EARNING: earn, SETTLEMENT: settlementsNet } };
+    const owedBy = uSum("CASH_COLLECTED") + uSum("CASH_SHORTAGE");
+    const owedTo = uSum("DELIVERY_EARNING");
+    return { owedToAccount: owedTo, owedByAccount: owedBy, net: owedTo - owedBy, totals: { CASH_COLLECTED: sum("CASH_COLLECTED"), CASH_SHORTAGE: sum("CASH_SHORTAGE"), DELIVERY_EARNING: sum("DELIVERY_EARNING"), SETTLEMENT: settlementsNet } };
   }
-  const unsettled = entries.filter((e) => !e.settlementId && e.type === "RESTAURANT_PAYABLE");
-  const owedTo = unsettled.reduce((a, b) => a + b.amount, 0);
+  const owedTo = uSum("RESTAURANT_PAYABLE");
   return { owedToAccount: owedTo, owedByAccount: 0, net: owedTo, totals: { RESTAURANT_PAYABLE: sum("RESTAURANT_PAYABLE"), PLATFORM_COMMISSION: sum("PLATFORM_COMMISSION"), SETTLEMENT: settlementsNet } };
 }
 
 export const getAccountStatement = (accountType: AccountType, accountId: string) =>
   run<T.AccountStatement>(() => {
+    const me = getCurrentUser();
+    if (me.role !== "ADMIN") {
+      const own = accountType === "DRIVER" ? me.role === "DRIVER" && myDriver(me).id === accountId : me.role === "RESTAURANT" && myRestaurant(me).id === accountId;
+      if (!own) fail("ليس لديك صلاحية لعرض هذا الكشف");
+    }
     const entries = getDb().ledger.filter((e) => e.accountType === accountType && e.accountId === accountId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { entries, balance: balanceOf(entries, accountType) };
   });
@@ -388,37 +568,54 @@ export const getSettlements = (f: { accountType?: AccountType; accountId?: strin
 
 export const createSettlement = (input: { accountType: AccountType; accountId: string; periodStart: string; periodEnd: string }) =>
   run(() => {
+    requireAdmin();
     const db = getDb();
+    if (input.periodStart > input.periodEnd) fail("بداية الفترة بعد نهايتها");
+    const mine = db.settlements.filter((s) => s.accountType === input.accountType && s.accountId === input.accountId);
+    if (mine.some((s) => s.status === "DRAFT")) fail("يوجد مسودة تسوية لهذا الحساب، أكّدها أو احذفها أولاً");
+    if (mine.some((s) => s.status === "CONFIRMED" && s.periodStart <= input.periodEnd && input.periodStart <= s.periodEnd)) fail("توجد تسوية مؤكدة تتداخل مع هذه الفترة");
     const entries = db.ledger.filter(
       (e) => e.accountType === input.accountType && e.accountId === input.accountId && !e.settlementId && e.type !== "SETTLEMENT" && e.createdAt >= input.periodStart && e.createdAt <= input.periodEnd,
     );
     if (!entries.length) fail("لا توجد حركات غير مسوّاة في هذه الفترة");
     const b = balanceOf(entries, input.accountType);
-    const s: Settlement = { id: uid(), ...input, totalOwedToAccount: b.owedToAccount, totalOwedByAccount: b.owedByAccount, netAmount: b.net, status: "DRAFT" };
+    const s: Settlement = { id: uid(), ...input, entryIds: entries.map((e) => e.id), totalOwedToAccount: b.owedToAccount, totalOwedByAccount: b.owedByAccount, netAmount: b.net, status: "DRAFT" };
     db.settlements.push(s);
     return s;
   });
 
-export const confirmSettlement = (id: string, userId: string) =>
+export const confirmSettlement = (id: string) =>
   run(() => {
+    const admin = requireAdmin();
     const db = getDb();
     const s = db.settlements.find((x) => x.id === id) ?? fail("التسوية غير موجودة");
     if (s.status === "CONFIRMED") fail("التسوية مؤكدة مسبقاً");
+    const ids = new Set(s.entryIds ?? []);
+    const entries = db.ledger.filter((e) => ids.has(e.id));
+    if (entries.some((e) => e.settlementId)) fail("بعض حركات هذه التسوية مسوّاة مسبقاً");
     s.status = "CONFIRMED";
-    s.confirmedByUserId = userId;
+    s.confirmedByUserId = admin.id;
     s.confirmedAt = nowIso();
-    db.ledger
-      .filter((e) => e.accountType === s.accountType && e.accountId === s.accountId && !e.settlementId && e.type !== "SETTLEMENT" && e.createdAt >= s.periodStart && e.createdAt <= s.periodEnd)
-      .forEach((e) => (e.settlementId = s.id));
-    db.ledger.push({ id: uid(), accountType: s.accountType, accountId: s.accountId, settlementId: s.id, type: "SETTLEMENT", amount: Math.abs(s.netAmount), createdAt: s.confirmedAt });
+    entries.forEach((e) => (e.settlementId = s.id));
+    db.ledger.push({
+      id: uid(), accountType: s.accountType, accountId: s.accountId, settlementId: s.id, type: "SETTLEMENT",
+      amount: Math.abs(s.netAmount), direction: s.netAmount >= 0 ? "PLATFORM_PAYS" : "ACCOUNT_PAYS", createdAt: s.confirmedAt,
+    });
     return s;
   });
 
+export const deleteSettlement = (id: string) =>
+  run(() => {
+    requireAdmin();
+    const db = getDb();
+    const s = db.settlements.find((x) => x.id === id) ?? fail("التسوية غير موجودة");
+    if (s.status !== "DRAFT") fail("لا يمكن حذف تسوية مؤكدة");
+    db.settlements = db.settlements.filter((x) => x.id !== id);
+    return true;
+  });
+
 // ---------- reports ----------
-const dayKey = (iso: string) => iso.slice(0, 10);
-function lastDays(n: number) {
-  return Array.from({ length: n }, (_, i) => dayKey(new Date(Date.now() - (n - 1 - i) * 86400000).toISOString()));
-}
+const lastDays = (n: number) => lastDayKeys(n);
 
 export const getRestaurantReport = (restaurantId: string) =>
   run<T.RestaurantReport>(() => {
@@ -438,7 +635,7 @@ export const getRestaurantReport = (restaurantId: string) =>
       itemMap.set(it.menuItemId, cur);
     }));
     const hours = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
-    orders.forEach((o) => hours[new Date(o.createdAt).getHours()].count++);
+    orders.forEach((o) => hours[hourOf(o.createdAt)].count++);
     const entries = db.ledger.filter((e) => e.accountType === "RESTAURANT" && e.accountId === restaurantId);
     return {
       today: { total: today.total, count: today.count },
@@ -455,7 +652,7 @@ export const getDriverEarnings = (driverId: string) =>
     const db = getDb();
     const delivered = db.orders.filter((o) => o.driverId === driverId && o.status === "DELIVERED").sort((a, b) => (b.deliveredAt ?? "").localeCompare(a.deliveredAt ?? ""));
     const todayK = dayKey(nowIso());
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const weekDays = new Set(lastDays(7));
     const entries = db.ledger.filter((e) => e.accountType === "DRIVER" && e.accountId === driverId);
     const earnOf = (pred: (o: Order) => boolean) => delivered.filter(pred).reduce((a, b) => a + b.deliveryFee, 0);
     const unsettledOrderIds = new Set(entries.filter((e) => !e.settlementId && e.type === "CASH_COLLECTED").map((e) => e.orderId));
@@ -464,8 +661,8 @@ export const getDriverEarnings = (driverId: string) =>
     const byRest = new Map<string, number>();
     handOver.forEach((o) => byRest.set(o.restaurantId, (byRest.get(o.restaurantId) ?? 0) + o.subtotal));
     return {
-      today: { amount: earnOf((o) => dayKey(o.deliveredAt ?? "") === todayK), count: delivered.filter((o) => dayKey(o.deliveredAt ?? "") === todayK).length },
-      week: { amount: earnOf((o) => (o.deliveredAt ?? "") >= weekAgo), count: delivered.filter((o) => (o.deliveredAt ?? "") >= weekAgo).length },
+      today: { amount: earnOf((o) => (!!o.deliveredAt && dayKey(o.deliveredAt) === todayK)), count: delivered.filter((o) => (!!o.deliveredAt && dayKey(o.deliveredAt) === todayK)).length },
+      week: { amount: earnOf((o) => !!o.deliveredAt && weekDays.has(dayKey(o.deliveredAt))), count: delivered.filter((o) => !!o.deliveredAt && weekDays.has(dayKey(o.deliveredAt))).length },
       deliveries: delivered,
       balance: balanceOf(entries, "DRIVER"),
       cashByRestaurant: Array.from(byRest.entries()).map(([id, amount]) => ({ restaurantId: id, restaurantName: restNames.get(id) ?? "", amount })),
